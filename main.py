@@ -10,7 +10,7 @@ import yt_dlp
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # Telegram Bot Token yahan daalein
-BOT_TOKEN = ""
+BOT_TOKEN = "8283637087:AAGYwNrjrCd216-K_Z0h2PTn6TtisKnKm6A"
 def save_user(user_id):
     file = "users.json"
     if not os.path.exists(file):
