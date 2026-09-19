@@ -140,17 +140,18 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         format_opt = "bestvideo+bestaudio/best"
 
-    ydl_opts = {
-        'format' : format_opt,
-'extractor_args': {
-    'youtube': {
-        'player_client': ['android', 'web', 'ios']
-    },
-    'instagram': {
-        'api_version': 'v1'
+        ydl_opts = {
+        'format': format_opt,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web', 'ios']
+            },
+            'instagram': {
+                'api_version': 'v1'
+            }
+        },
+        'noplaylist': True
     }
-},
-'noplaylist': True,
 
     try:
         def download_file():
