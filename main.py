@@ -1,4 +1,3 @@
-
 import os
 import asyncio
 import logging
@@ -6,13 +5,13 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-# Logging configuration
+# Logging setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# ADMIN CONFIGURATION (Apni Telegram ID yahan dalein)
-ADMIN_ID = 8562470788  # Replace with your Telegram User ID
+# --- CONFIGURATION ---
+ADMIN_ID = 8562470788  # Apni Telegram Numeric ID yahan daalein
+BOT_TOKEN = "8283637087:AAGYwNrjrCd216-K_Z0h2PTn6TtisKnKm6A"  # Apna Bot Token yahan daalein
 
-# Simple file-based user storage
 USERS_FILE = "users.txt"
 
 def add_user(user_id):
@@ -27,12 +26,10 @@ def get_users():
     with open(USERS_FILE, "r") as f:
         return [line.strip() for line in f.readlines() if line.strip()]
 
-# Progress Bar Generator
 def make_progress_bar(percent):
     done = int(percent // 10)
     return "■" * done + "□" * (10 - done)
 
-# Progress Hook for yt-dlp
 def make_progress_hook(loop, bot, chat_id, message_id):
     last_text = {"text": ""}
 
@@ -49,61 +46,65 @@ def make_progress_hook(loop, bot, chat_id, message_id):
             total_mb = total_bytes / (1024 * 1024)
 
             text = (
-                f"Status Downloading...📥**\n"
+                "Status Download : 📥\n"
                 f"{make_progress_bar(percent)} {percent:.1f}%\n"
                 f"Speed: {speed_mb:.2f} MB/s\n"
                 f"Size: {downloaded_mb:.1f} MB / {total_mb:.1f} MB\n"
-                f"ETA: {eta}s"
+                f" ETA: {eta}s"
             )
 
             if text != last_text["text"]:
                 last_text["text"] = text
                 asyncio.run_coroutine_threadsafe(
-                    bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode='Markdown'),
+                    bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text),
                     loop
                 )
 
     return progress_hook
 
-# Start Command
+# --- START COMMAND ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    add_user(user_id)
-    
+    user = update.effective_user
+    add_user(user.id)
+    user_name = user.first_name if user else "User"
+
     welcome_text = (
-        "<b>𝐇ᴇʏ 𝐖ᴇʟᴄᴏᴍᴇ ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅᴇʀ 𝐁ᴏᴛ.</b>\n\n"
-        "𝐈 𝐀ᴍ 𝐔𝐑L 𝐕ɪᴅᴇᴏ 𝐃ᴏᴡɴʟᴏᴀᴅᴇʀ ᴡɪᴛʜ 𝐌ᴜʟᴛɪᴘʟᴇ ғᴀsᴛ ᴘʀᴏsᴇss ғᴇᴀᴛᴜʀᴇs 𝐀ʀᴇ 𝐀ᴠᴀɪʟᴀʙʟᴇ ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅ "𝐘ᴏᴜ ᴛᴜʙᴇ 𝐈ɴsᴛᴀɢʀᴀᴍ Fᴀᴄᴇʙᴏᴏᴋ" 𝐕ɪᴅᴇᴏs 𝐀ɴᴅ ᴄᴀɴ 𝐀ʟᴡᴀʏs 𝐇ᴇʟᴘ ᴛʜɪs 𝐈F 𝐘ᴏᴜ 𝐑ᴇᴀᴅ𝐘 ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅ 𝐒ᴇɴᴅ Lɪɴᴋ, 𝐖ᴇ 𝐃ɪʀᴇᴄᴛ 𝐔ᴘʟᴏᴀᴅ ʏᴏᴜʀ 𝐕ɪᴅᴇᴏ, 𝐏ʟᴇᴀsᴇ 𝐆ɪᴠᴇ ᴍᴇ 𝐑ᴇᴏᴜᴇsᴛ ᴛᴏ sᴛᴀʀᴛ"
+        f"𝐇ᴇʏ <b>{user_name}</b> 𝐖ᴇʟᴄᴏᴍᴇ ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅᴇʀ 𝐁ᴏᴛ.\n\n"
+        "𝐈 𝐀ᴍ 𝐔𝐑L 𝐕ɪᴅᴇᴏ 𝐃ᴏᴡɴʟᴏᴀᴅᴇʀ ᴡɪᴛʜ 𝐌ᴜʟᴛɪᴘʟᴇ ғᴀsᴛ ᴘʀᴏsᴇss ғᴇᴀᴛᴜʀᴇs 𝐀ʀᴇ 𝐀ᴠᴀɪʟᴀʙʟᴇ "
+        'ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅ "𝐘ᴏᴜ ᴛᴜʙᴇ 𝐈ɴsᴛᴀɢʀᴀᴍ Fᴀᴄᴇʙᴏᴏᴋ" 𝐕ɪᴅᴇᴏs 𝐀ɴᴅ ᴄᴀɴ 𝐀ʟᴡᴀʏs 𝐇ᴇʟᴘ ᴛʜɪs 𝐈F '
+        "𝐘ᴏᴜ 𝐑ᴇᴀᴅ𝐘 ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅ 𝐒ᴇɴᴅ Lɪɴᴋ, 𝐖ᴇ 𝐃ɪʀᴇᴄᴛ 𝐔ᴘʟᴏᴀᴅ ʏᴏᴜʀ 𝐕ɪᴅᴇᴏ, "
+        "𝐏ʟᴇᴀsᴇ 𝐆ɪᴠᴇ ᴍᴇ 𝐑ᴇᴏᴜᴇsᴛ ᴛᴏ sᴛᴀʀᴛ\n\n"
         "𝐏ʟᴇᴀsᴇ 𝐒ʜᴀʀᴇ 𝐀ɴᴅ 𝐆ɪᴠᴇ 𝐒ᴜᴘᴘᴏʀᴛ."
     )
-    
+
     keyboard = [
         [
             InlineKeyboardButton("𝐔ᴘᴅᴀᴛᴇs", url="https://t.me/your_channel"),
             InlineKeyboardButton("𝐒ᴜᴘᴘᴏʀᴛ", url="https://t.me/your_support")
         ],
         [
-            InlineKeyboardButton("𝐒ʜᴀʀᴇ", callback_data="help"),
+            InlineKeyboardButton("𝐇ᴇʟᴘ", callback_data="help_info"),
             InlineKeyboardButton("𝐃ᴇᴠᴇʟᴏᴘᴇʀ", url="https://t.me/your_dev")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(welcome_text, parse_mode='HTML', reply_markup=reply_markup)
 
-# Admin Status Command
+# --- ADMIN COMMAND: USER STATUS ---
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     users = get_users()
-    await update.message.reply_text(f"📊 **Total Bot Users:** {len(users)}")
+    await update.message.reply_text(f"📊 Total Bot Users: {len(users)}")
 
-# Admin Broadcast Command (/broadcast Your message here)
+# --- ADMIN COMMAND: BROADCAST ---
 async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-    
+
     msg = update.message.text.replace("/broadcast", "").strip()
     if not msg:
-        await update.message.reply_text("❌ Usage: `/broadcast Your Message Here`", parse_mode='Markdown')
+        await update.message.reply_text("❌ Usage: /broadcast Your Message Here")
         return
 
     users = get_users()
@@ -119,27 +120,24 @@ async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(f"Broadcast Complete!\nSuccess: {success}\nFailed: {failed}")
 
-# Video Downloader Handler
+# --- DOWNLOAD HANDLER ---
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     add_user(user_id)
-    
+
     url = update.message.text.strip()
     if not (url.startswith("http://") or url.startswith("https://")):
         return
 
     # Step 1: Processing Status
-    status_msg = await update.message.reply_text("**𝐏ʀᴏsᴇssɪɴɢ...⚡️**", parse_mode='Markdown')
+    status_msg = await update.message.reply_text("𝐏ʀᴏsᴇssɪɴɢ...⚡️")
 
     loop = asyncio.get_running_loop()
     download_dir = "downloads"
     os.makedirs(download_dir, exist_ok=True)
 
-    # Format selection rules:
-    # Shorts -> 1080p limit
-    # Long YouTube -> 360p limit
-    # Others -> Best direct mp4 format
-    if "youtube.com/shorts/" in url or "youtu.be/" in url and "shorts" in url:
+    # Resolution Control: Shorts <= 1080p, YouTube Long <= 360p, Others = Best MP4
+    if "youtube.com/shorts/" in url or ("youtu.be/" in url and "shorts" in url):
         fmt = "b[ext=mp4][height<=1080]/best[ext=mp4][height<=1080]/best"
     elif "youtube.com" in url or "youtu.be" in url:
         fmt = "b[ext=mp4][height<=360]/best[ext=mp4][height<=360]/best"
@@ -160,30 +158,24 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 info = ydl.extract_info(url, download=True)
                 return ydl.prepare_filename(info)
 
-        # Download Video
         file_path = await loop.run_in_executor(None, download)
 
-        # Step 2: Upload Status
-        await status_msg.edit_text("**ᴘʟᴇᴀꜱᴇ ᴡᴀɪᴛ ᴜᴘʟᴏᴀᴅɪɴɢ...⚡️**", parse_mode='Markdown')
+        # Step 2: Uploading Status
+        await status_msg.edit_text("Status Upload : 📥\n𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴜᴘʟᴏᴀᴅɪɴɢ...⚡️")
 
-        # Upload Video to Chat
         with open(file_path, 'rb') as video_file:
-            await update.message.reply_video(video=video_file, caption="**ᴅᴏᴡɴʟᴏᴀᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟ ✨**", parse_mode='Markdown')
+            await update.message.reply_video(video=video_file)
 
-        # Cleanup
         await status_msg.delete()
         if os.path.exists(file_path):
             os.remove(file_path)
 
     except Exception as e:
         logging.error(f"Error: {e}")
-        await status_msg.edit_text("❌ **Process fail ho gaya! Link check karein ya thodi der baad try karein.**", parse_mode='Markdown')
+        await status_msg.edit_text("Process fail ho gaya! Link check karein ya thodi der baad try karein.")
 
-# Main Runner
+# --- MAIN RUNNER ---
 if __name__ == '__main__':
-    # Add your Telegram Bot Token Here
-    BOT_TOKEN = "8283637087:AAGYwNrjrCd216-K_Z0h2PTn6TtisKnKm6A"
-    
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -193,3 +185,4 @@ if __name__ == '__main__':
 
     print("Bot is running...")
     app.run_polling()
+        
