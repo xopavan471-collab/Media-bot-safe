@@ -1,238 +1,156 @@
 import os
-import re
-import asyncio
+import json
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
 
-# Logging Configuration
+# Logging setup
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-# Configuration Variables
-BOT_TOKEN = "8283637087:AAH_q5peDqMMadZhU6zlja21JRq6wpkl-7E"  # Apna Telegram Bot Token yahan daalein
-ADMIN_ID = 8562470788                # Apna numeric Telegram User ID yahan daalein
+# Configuration
+BOT_TOKEN = ("BOT_TOKEN", "8283637087:AAH_q5peDqMMadZhU6zlja21JRq6wpkl-7E")
+ADMIN_ID = 8562470788  # <--- Apna Telegram Numeric User ID Yahan Daalein
 
-USER_FILE = "users.txt"
+USERS_FILE = "users.json"
 
-# Helper Functions for Managing Users
-def get_users():
-    if not os.path.exists(USER_FILE):
-        return set()
-    with open(USER_FILE, "r") as f:
-        return set(line.strip() for line in f if line.strip())
+# Helper Functions for User Management
+def load_users():
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r") as f:
+                return set(json.load(f))
+        except Exception:
+            return set()
+    return set()
 
-def add_user(user_id):
-    users = get_users()
-    if str(user_id) not in users:
-        with open(USER_FILE, "a") as f:
-            f.write(f"{user_id}\n")
+def save_user(user_id):
+    users = load_users()
+    if user_id not in users:
+        users.add(user_id)
+        with open(USERS_FILE, "w") as f:
+            json.dump(list(users), f)
 
-# Custom Dynamic Progress Bar Generator
-def make_progress_bar(percent):
-    filled = int(percent // 10)
-    empty = 10 - filled
-    return "■" * filled + "□" * empty + f" {percent:.1f}%"
-
-# Command: /start
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Command Handlers
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    user_name = update.effective_user.first_name
-    bot_username = context.bot.username
-    add_user(user_id)
-    
-    # Aapka Custom Welcome Text
+    save_user(user_id)
+
     welcome_text = (
-        f"𝐖ᴇʟᴄᴏᴍᴇ <b>{user_name}</b> 𝐌ᴇᴅɪᴀ 𝐔ᴘʟᴏᴀᴅᴇʀ 𝐁ᴏᴛ.\n\n"
-        "𝐖ᴇ 𝐂ᴀɴ ʜᴇʟᴘ ᴛᴏ 𝐌ᴜʟᴛɪᴘʟᴇ ғᴀsᴛ 𝐏ʀᴏsᴇss ғᴇᴀᴛᴜʀᴇs 𝐀ʀᴇ 𝐀ᴠᴀɪʟᴀᴠʟᴇ  Dᴏᴡɴʟᴏᴀᴅ Mᴇᴅɪᴀ ғɪʀᴇ Wɪᴛʜ Fᴀsᴛ\n"
-        "𝐉ᴜsᴛ 𝐒ᴇɴᴅ 𝐕ɪᴅᴇᴏ ʟɪɴᴋ, 𝐖ᴇ ᴅɪʀᴇᴄᴛ ᴜᴘʟᴏᴀᴅ ʏᴏᴜʀ ғɪʟᴇ, 𝐕ɪᴅᴇᴏ Sɪᴢᴇ\n"
-        "𝐀ʟʟᴏᴡᴇᴅ 𝐃ᴏɴ'ᴛ sᴇɴᴅ 𝐁ɪɢ 𝐌ʙ sɪᴢᴇ 𝐀ɴᴅ sᴇɴᴅ ᴏɴʟʏ\n"
-        "𝐓ᴀʀɢᴇᴛ 𝐖ᴇ ᴄᴀɴ ʜᴀɴᴅʟᴇ ғᴀsᴛ ᴇᴀsɪʟʏ\n"
-        "𝐏ʟᴇᴀsᴇ 𝐆ɪᴠᴇ 𝐑ᴇᴏᴜᴇsᴛ ᴛᴏ sᴛᴀʀᴛ.\n\n"
-        "𝐏ʟᴇᴀsᴇ 𝐒ʜᴀʀᴇ 𝐀ɴᴅ 𝐆ɪᴠᴇ 𝐒ᴜᴘᴘᴏʀᴛ."
+        "𝑾𝑬𝑳𝑪𝑶𝑴𝑬 𝑴𝑹 ⪩ 𝒁𝑬 any 𝑴𝑬𝑫𝑰𝑨 𝑴𝑬𝑫𝑰𝑨 𝑼𝑑𝑳𝑶𝑨𝑫𝑬𝑹 𝑩𝑶𝑻.\n\n"
+        "𝑾𝑬 𝑪𝑨𝑵 𝑯𝑬𝑳𝑑 𝑻𝑶 𝑴𝑼𝑳𝑻𝑰𝑷𝑳𝑬 𝑭𝑨𝑺𝑻 𝑷𝑹𝑶𝑺𝑬𝑺𝑺 𝑭𝑬𝑨𝑻𝑼𝑑𝑬𝑺 𝑨𝑹𝑬 𝑨𝑽𝑨𝑰𝑳𝑨𝑽𝑳𝑬 "
+        "𝑫𝑶𝑑𝑵𝑳𝑶𝑨𝑫 𝑴𝑬𝑫𝑰𝑨 𝑭𝑰𝑹𝑬 𝑑𝑰𝑻𝑯 𝑭𝑨𝑺𝑻 𝑱𝑼𝑺𝑻 𝑺𝑬𝑵𝑫 𝑽𝑰𝑫𝑬𝑶 𝑳𝑰𝑵𝑲, "
+        "𝑾𝑬 𝑫𝑰𝑑𝑬𝑪𝑻 𝑼𝑑𝑳𝑶𝑨𝑫 𝒀𝑶𝑑𝑹 𝑭𝑰𝑳𝑬, 𝑽𝑰𝑫𝑬𝑶 𝑺𝑰𝒁𝑬 𝑨𝑳𝑳𝑶𝑑𝑬𝑫 𝑫𝑶𝑵'𝑻 𝑺𝑬𝑵𝑫 "
+        "𝑩𝑰𝑮 𝑴𝑴𝑩 𝑺𝑰𝒁𝑬 𝑨𝑵𝑫 𝑺𝑬𝑵𝑫 𝑶𝑵𝑳𝒀 𝑻𝑨𝑑𝑮𝑬𝑻 𝑾𝑬 𝑪𝑨𝑵 𝑯𝑨𝑵𝑫𝑳𝑬 𝑭𝑨𝑺𝑻 𝑬𝑨𝑺𝑰𝑳𝒀 "
+        "𝑷𝑳𝑬𝑨𝑺𝑬 𝑮𝑰𝑽𝑬 𝑹𝑬𝑸𝑼𝑬𝑺𝑻 𝑻𝑶 𝑺𝑻𝑨𝑑𝑻.\n\n"
+        "𝑷𝑳𝑬𝑨𝑺𝑬 𝑺𝑯𝑨𝑑𝑬 𝑨𝑵𝑫 𝑮𝑰𝑽𝑬 𝑺𝑼𝑑𝑑𝑶𝑑𝑻."
     )
-    
-    # 4 Requested Buttons: Updates, Support, Share, Help
-    share_url = f"https://t.me/share/url?url=https://t.me/{bot_username}&text=Check%20out%20this%20awesome%20Media%20Downloader%20Bot!"
-    
+
     keyboard = [
         [
-            InlineKeyboardButton("𝐔ᴘᴅᴀᴛᴇs", url="https://t.me/telegram"),
-            InlineKeyboardButton("𝐒ᴜᴘᴘᴏʀᴛ", url="https://t.me/telegram")
-        ],
-        [
-            InlineKeyboardButton("𝐒ʜᴀʀᴇ", url=share_url),
-            InlineKeyboardButton("𝐇ᴇʟᴘ", callback_data="help_info")
+            InlineKeyboardButton("𝐔ᴘᴅᴀᴛᴇs", url="https://t.me/your_updates_channel"),
+            InlineKeyboardButton("𝐒ᴜᴘᴘᴏʀᴛ", url="https://t.me/your_support_group")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(welcome_text, parse_mode="HTML", reply_markup=reply_markup)
 
-# Callback Handler for Inline Buttons
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "help_info":
-        help_text = (
-            "<b>💡 How To Use:</b>\n\n"
-            "1. Copy video link from YouTube, Instagram, or Facebook.\n"
-            "2. Send link here in this chat.\n"
-            "3. Wait a few seconds for high-speed download & upload!\n\n"
-            "<i>Note: Big files might fail due to server limits.</i>"
-        )
-        await query.edit_message_text(help_text, parse_mode="HTML")
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
-# Command: /status (Admin Only)
-async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
         return
-    
-    users = get_users()
-    await update.message.reply_text(f"📊 <b>Bot Status:</b>\n\nTotal Registered Users: <code>{len(users)}</code>", parse_mode="HTML")
 
-# Command: /broadcast (Admin Only)
-async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
+    users = load_users()
+    await update.message.reply_text(f"📊 **Bot Status:**\nTotal Registered Users: `{len(users)}`", parse_mode="Markdown")
+
+async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
         return
-    
-    if not context.args:
-        await update.message.reply_text("❌ Command Format: <code>/broadcast Message Text</code>", parse_mode="HTML")
+
+    if not update.message.reply_to_message:
+        await update.message.reply_text("❌ Kishi message ko reply karke `/broadcast` likhein.")
         return
+
+    target_msg = update.message.reply_to_message
+    users = load_users()
     
-    msg_to_send = " ".join(context.args)
-    users = get_users()
-    sent_count = 0
-    failed_count = 0
-    
-    status_msg = await update.message.reply_text("🚀 Broadcast starting...")
-    
-    for uid in users:
+    success = 0
+    failed = 0
+
+    await update.message.reply_text(f"📢 Broadcast shuru ho gaya hai `{len(users)}` users ko...")
+
+    for u_id in users:
         try:
-            await context.bot.send_message(chat_id=int(uid), text=msg_to_send)
-            sent_count += 1
-            await asyncio.sleep(0.05)
+            await target_msg.copy(chat_id=u_id)
+            success += 1
         except Exception:
-            failed_count += 1
-            
-    await status_msg.edit_text(
-        f"✅ <b>Broadcast Completed!</b>\n\n"
-        f"<b>Success:</b> {sent_count}\n"
-        f"<b>Failed:</b> {failed_count}",
-        parse_mode="HTML"
-    )
+            failed += 1
 
-# Media Downloader Handler
-async def process_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"✅ **Broadcast Done!**\nSuccess: `{success}`\nFailed/Blocked: `{failed}`", parse_mode="Markdown")
+
+async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    save_user(user_id)
+
     url = update.message.text.strip()
-    
     if not (url.startswith("http://") or url.startswith("https://")):
-        await update.message.reply_text("❌ Kripya valid HTTP/HTTPS video URL bhejein.")
         return
 
-    status_msg = await update.message.reply_text("Processing link... 📥")
-    loop = asyncio.get_running_loop()
-    last_update_time = [0]
+    status_msg = await update.message.reply_text("Progress Downloading ...📥\n■■■□□□□□□□ 36%")
 
-    # Progress Callback Function for yt-dlp
-    def yt_progress_hook(d):
-        if d['status'] == 'downloading':
-            total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
-            downloaded = d.get('downloaded_bytes', 0)
-            if total > 0:
-                percent = (downloaded / total) * 100
-                import time
-                current_time = time.time()
-                if current_time - last_update_time[0] > 2.0:
-                    last_update_time[0] = current_time
-                    bar = make_progress_bar(percent)
-                    text = f"Downloading... 📥\n{bar}"
-                    asyncio.run_coroutine_threadsafe(
-                        status_msg.edit_text(text), loop
-                    )
+    is_short = "shorts" in url.lower() or "reel" in url.lower() or "tiktok" in url.lower()
 
-    output_filename = f"video_{update.effective_user.id}.mp4"
+    if is_short:
+        format_str = 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best'
+    else:
+        format_str = 'bestvideo[height<=360][ext=mp4]+bestaudio[ext=m4a]/best[height<=360][ext=mp4]/best'
 
-    # Video type Check (Shorts / Reels vs Long Video)
-is_short_video = "shorts" in url.lower() or "reel" in url.lower()
-
-# Dynamic Format Selection
-if is_short_video:
-    # Short Videos (Reels / Shorts) -> Up to 1080p
-    video_format = 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best'
-else:
-    # Long Videos -> Up to 360p
-    video_format = 'bestvideo[ext=mp4][height<=360]+bestaudio[ext=m4a]/best[ext=mp4][height<=360]/best'
-
-# Youtube & Bot Anti-Block Options
-ydl_opts = {
-    'format': video_format,
-    'outtmpl': output_filename,
-    'quiet': True,
-    'no_warnings': True,
-    'progress_hooks': [yt_progress_hook],
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['ios', 'android', 'web'],
-            'player_skip': ['webpage', 'configs']
-        }
-    },
-    'http_headers': {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-        'Accept-Language': 'en-US,en;q=0.9',
-    },
-
+    ydl_opts = {
+        'format': format_str,
+        'outtmpl': 'downloaded_video.%(ext)s',
+        'quiet': True,
+        'no_warnings': True,
+    }
 
     try:
-        def download():
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
 
-        await loop.run_in_executor(None, download)
-        await status_msg.edit_text("Uploading... 📤\n■■■■■■■■■■ 100%")
+        await status_msg.edit_text("Please wait Uploading...⚡")
+        
+        with open(filename, 'rb') as video:
+            await update.message.reply_video(video=video)
 
-        with open(output_filename, 'rb') as video_file:
-            await update.message.reply_video(
-                video=video_file,
-                caption="✅ Video uploaded successfully!"
-            )
+        if os.path.exists(filename):
+            os.remove(filename)
+
         await status_msg.delete()
 
     except Exception as e:
-        logging.error(f"Error processing URL: {e}")
-        await status_msg.edit_text(f"❌ Download Failed!\nError: {str(e)[:100]}")
-    
-    finally:
-        if os.path.exists(output_filename):
-            try:
-                os.remove(output_filename)
-            except Exception:
-                pass
+        logging.error(f"Error downloading video: {e}")
+        await status_msg.edit_text(f" Failed ❌ {str(e)}")
 
-# Main Runner
 def main():
+    if BOT_TOKEN == "8283637087:AAH_q5peDqMMadZhU6zlja21JRq6wpkl-7E" or not BOT_TOKEN:
+        print("ERROR: BOT_TOKEN is missing!")
+        return
+
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CommandHandler("status", status_command))
-    app.add_handler(CommandHandler("broadcast", broadcast_command))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_media))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("broadcast", broadcast))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_video))
 
-    print("Bot is running...")
+    print("Bot is running successfully with Admin features...")
     app.run_polling()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
 
