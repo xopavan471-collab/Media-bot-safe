@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 
 # Configuration
-BOT_TOKEN = ("BOT_TOKEN", "8283637087:AAH_q5peDqMMadZhU6zlja21JRq6wpkl-7E")
+BOT_TOKEN = ("BOT_TOKEN", "8283637087:AAHYzkVttcARpX7_tfX7iwxUWLWpNmh2Otg")
 ADMIN_ID = 8562470788  # <--- Apna Telegram Numeric User ID Yahan Daalein
 
 USERS_FILE = "users.json"
@@ -136,10 +136,6 @@ async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.error(f"Error downloading video: {e}")
         await status_msg.edit_text(f" Failed ❌ {str(e)}")
 
-def main():
-    if BOT_TOKEN == "8283637087:AAH_q5peDqMMadZhU6zlja21JRq6wpkl-7E" or not BOT_TOKEN:
-        print("ERROR: BOT_TOKEN is missing!")
-        return
 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
