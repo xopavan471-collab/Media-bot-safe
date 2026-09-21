@@ -164,22 +164,35 @@ async def process_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     output_filename = f"video_{update.effective_user.id}.mp4"
 
-    # YouTube 403 & Download Fix Options
-    ydl_opts = {
-        'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best',
-        'outtmpl': output_filename,
-        'quiet': True,
-        'no_warnings': True,
-        'progress_hooks': [yt_progress_hook],
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web'],
-            }
-        },
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+    # Video type Check (Shorts / Reels vs Long Video)
+is_short_video = "shorts" in url.lower() or "reel" in url.lower()
+
+# Dynamic Format Selection
+if is_short_video:
+    # Short Videos (Reels / Shorts) -> Up to 1080p
+    video_format = 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best'
+else:
+    # Long Videos -> Up to 360p
+    video_format = 'bestvideo[ext=mp4][height<=360]+bestaudio[ext=m4a]/best[ext=mp4][height<=360]/best'
+
+# Youtube & Bot Anti-Block Options
+ydl_opts = {
+    'format': video_format,
+    'outtmpl': output_filename,
+    'quiet': True,
+    'no_warnings': True,
+    'progress_hooks': [yt_progress_hook],
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['ios', 'android', 'web'],
+            'player_skip': ['webpage', 'configs']
         }
-    }
+    },
+    'http_headers': {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        'Accept-Language': 'en-US,en;q=0.9',
+    },
+
 
     try:
         def download():
