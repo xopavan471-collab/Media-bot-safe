@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 
 # Configuration Variables
-BOT_TOKEN = "8283637087:AAFUgafsD6e0UzAnkgVPuKvrTVaZBWZ9RCE"  # Apna Telegram Bot Token yahan daalein
+BOT_TOKEN = "8283637087:AAH_q5peDqMMadZhU6zlja21JRq6wpkl-7E"  # Apna Telegram Bot Token yahan daalein
 ADMIN_ID = 8562470788                # Apna numeric Telegram User ID yahan daalein
 
 USER_FILE = "users.txt"
