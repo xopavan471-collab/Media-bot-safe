@@ -1,188 +1,225 @@
 import os
+import re
 import asyncio
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 import yt_dlp
 
-# Logging setup
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+# Logging Configuration
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
 
-# --- CONFIGURATION ---
-ADMIN_ID = 8562470788  # Apni Telegram Numeric ID yahan daalein
-BOT_TOKEN = "8283637087:AAGYwNrjrCd216-K_Z0h2PTn6TtisKnKm6A"  # Apna Bot Token yahan daalein
+# Configuration Variables
+BOT_TOKEN = "8283637087:AAFUgafsD6e0UzAnkgVPuKvrTVaZBWZ9RCE"  # Apna Telegram Bot Token yahan daalein
+ADMIN_ID = 8562470788                # Apna numeric Telegram User ID yahan daalein
 
-USERS_FILE = "users.txt"
+USER_FILE = "users.txt"
+
+# Helper Functions for Managing Users
+def get_users():
+    if not os.path.exists(USER_FILE):
+        return set()
+    with open(USER_FILE, "r") as f:
+        return set(line.strip() for line in f if line.strip())
 
 def add_user(user_id):
     users = get_users()
     if str(user_id) not in users:
-        with open(USERS_FILE, "a") as f:
+        with open(USER_FILE, "a") as f:
             f.write(f"{user_id}\n")
 
-def get_users():
-    if not os.path.exists(USERS_FILE):
-        return []
-    with open(USERS_FILE, "r") as f:
-        return [line.strip() for line in f.readlines() if line.strip()]
-
+# Custom Dynamic Progress Bar Generator
 def make_progress_bar(percent):
-    done = int(percent // 10)
-    return "■" * done + "□" * (10 - done)
+    filled = int(percent // 10)
+    empty = 10 - filled
+    return "■" * filled + "□" * empty + f" {percent:.1f}%"
 
-def make_progress_hook(loop, bot, chat_id, message_id):
-    last_text = {"text": ""}
-
-    def progress_hook(d):
-        if d['status'] == 'downloading':
-            total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
-            downloaded = d.get('downloaded_bytes', 0)
-            speed = d.get('speed', 0) or 0
-            eta = d.get('eta', 0) or 0
-
-            percent = (downloaded / total_bytes * 100) if total_bytes > 0 else 0
-            speed_mb = speed / (1024 * 1024)
-            downloaded_mb = downloaded / (1024 * 1024)
-            total_mb = total_bytes / (1024 * 1024)
-
-            text = (
-                "Status Download : 📥\n"
-                f"{make_progress_bar(percent)} {percent:.1f}%\n"
-                f"Speed: {speed_mb:.2f} MB/s\n"
-                f"Size: {downloaded_mb:.1f} MB / {total_mb:.1f} MB\n"
-                f" ETA: {eta}s"
-            )
-
-            if text != last_text["text"]:
-                last_text["text"] = text
-                asyncio.run_coroutine_threadsafe(
-                    bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text),
-                    loop
-                )
-
-    return progress_hook
-
-# --- START COMMAND ---
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    add_user(user.id)
-    user_name = user.first_name if user else "User"
-
+# Command: /start
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_name = update.effective_user.first_name
+    bot_username = context.bot.username
+    add_user(user_id)
+    
+    # Aapka Custom Welcome Text
     welcome_text = (
-        f"𝐇ᴇʏ <b>{user_name}</b> 𝐖ᴇʟᴄᴏᴍᴇ ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅᴇʀ 𝐁ᴏᴛ.\n\n"
-        "𝐈 𝐀ᴍ 𝐔𝐑L 𝐕ɪᴅᴇᴏ 𝐃ᴏᴡɴʟᴏᴀᴅᴇʀ ᴡɪᴛʜ 𝐌ᴜʟᴛɪᴘʟᴇ ғᴀsᴛ ᴘʀᴏsᴇss ғᴇᴀᴛᴜʀᴇs 𝐀ʀᴇ 𝐀ᴠᴀɪʟᴀʙʟᴇ "
-        'ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅ "𝐘ᴏᴜ ᴛᴜʙᴇ 𝐈ɴsᴛᴀɢʀᴀᴍ Fᴀᴄᴇʙᴏᴏᴋ" 𝐕ɪᴅᴇᴏs 𝐀ɴᴅ ᴄᴀɴ 𝐀ʟᴡᴀʏs 𝐇ᴇʟᴘ ᴛʜɪs 𝐈F '
-        "𝐘ᴏᴜ 𝐑ᴇᴀᴅ𝐘 ᴛᴏ 𝐃ᴏᴡɴʟᴏᴀᴅ 𝐒ᴇɴᴅ Lɪɴᴋ, 𝐖ᴇ 𝐃ɪʀᴇᴄᴛ 𝐔ᴘʟᴏᴀᴅ ʏᴏᴜʀ 𝐕ɪᴅᴇᴏ, "
-        "𝐏ʟᴇᴀsᴇ 𝐆ɪᴠᴇ ᴍᴇ 𝐑ᴇᴏᴜᴇsᴛ ᴛᴏ sᴛᴀʀᴛ\n\n"
+        f"𝐖ᴇʟᴄᴏᴍᴇ <b>{user_name}</b> 𝐌ᴇᴅɪᴀ 𝐔ᴘʟᴏᴀᴅᴇʀ 𝐁ᴏᴛ.\n\n"
+        "𝐖ᴇ 𝐂ᴀɴ ʜᴇʟᴘ ᴛᴏ 𝐌ᴜʟᴛɪᴘʟᴇ ғᴀsᴛ 𝐏ʀᴏsᴇss ғᴇᴀᴛᴜʀᴇs 𝐀ʀᴇ 𝐀ᴠᴀɪʟᴀᴠʟᴇ  Dᴏᴡɴʟᴏᴀᴅ Mᴇᴅɪᴀ ғɪʀᴇ Wɪᴛʜ Fᴀsᴛ\n"
+        "𝐉ᴜsᴛ 𝐒ᴇɴᴅ 𝐕ɪᴅᴇᴏ ʟɪɴᴋ, 𝐖ᴇ ᴅɪʀᴇᴄᴛ ᴜᴘʟᴏᴀᴅ ʏᴏᴜʀ ғɪʟᴇ, 𝐕ɪᴅᴇᴏ Sɪᴢᴇ\n"
+        "𝐀ʟʟᴏᴡᴇᴅ 𝐃ᴏɴ'ᴛ sᴇɴᴅ 𝐁ɪɢ 𝐌ʙ sɪᴢᴇ 𝐀ɴᴅ sᴇɴᴅ ᴏɴʟʏ\n"
+        "𝐓ᴀʀɢᴇᴛ 𝐖ᴇ ᴄᴀɴ ʜᴀɴᴅʟᴇ ғᴀsᴛ ᴇᴀsɪʟʏ\n"
+        "𝐏ʟᴇᴀsᴇ 𝐆ɪᴠᴇ 𝐑ᴇᴏᴜᴇsᴛ ᴛᴏ sᴛᴀʀᴛ.\n\n"
         "𝐏ʟᴇᴀsᴇ 𝐒ʜᴀʀᴇ 𝐀ɴᴅ 𝐆ɪᴠᴇ 𝐒ᴜᴘᴘᴏʀᴛ."
     )
-
+    
+    # 4 Requested Buttons: Updates, Support, Share, Help
+    share_url = f"https://t.me/share/url?url=https://t.me/{bot_username}&text=Check%20out%20this%20awesome%20Media%20Downloader%20Bot!"
+    
     keyboard = [
         [
-            InlineKeyboardButton("𝐔ᴘᴅᴀᴛᴇs", url="https://t.me/your_channel"),
-            InlineKeyboardButton("𝐒ᴜᴘᴘᴏʀᴛ", url="https://t.me/your_support")
+            InlineKeyboardButton("𝐔ᴘᴅᴀᴛᴇs", url="https://t.me/telegram"),
+            InlineKeyboardButton("𝐒ᴜᴘᴘᴏʀᴛ", url="https://t.me/telegram")
         ],
         [
-            InlineKeyboardButton("𝐇ᴇʟᴘ", callback_data="help_info"),
-            InlineKeyboardButton("𝐃ᴇᴠᴇʟᴏᴘᴇʀ", url="https://t.me/your_dev")
+            InlineKeyboardButton("𝐒ʜᴀʀᴇ", url=share_url),
+            InlineKeyboardButton("𝐇ᴇʟᴘ", callback_data="help_info")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(welcome_text, parse_mode='HTML', reply_markup=reply_markup)
+    
+    await update.message.reply_text(welcome_text, parse_mode="HTML", reply_markup=reply_markup)
 
-# --- ADMIN COMMAND: USER STATUS ---
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Callback Handler for Inline Buttons
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "help_info":
+        help_text = (
+            "<b>💡 How To Use:</b>\n\n"
+            "1. Copy video link from YouTube, Instagram, or Facebook.\n"
+            "2. Send link here in this chat.\n"
+            "3. Wait a few seconds for high-speed download & upload!\n\n"
+            "<i>Note: Big files might fail due to server limits.</i>"
+        )
+        await query.edit_message_text(help_text, parse_mode="HTML")
+
+# Command: /status (Admin Only)
+async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
+    
     users = get_users()
-    await update.message.reply_text(f"📊 Total Bot Users: {len(users)}")
+    await update.message.reply_text(f"📊 <b>Bot Status:</b>\n\nTotal Registered Users: <code>{len(users)}</code>", parse_mode="HTML")
 
-# --- ADMIN COMMAND: BROADCAST ---
-async def broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Command: /broadcast (Admin Only)
+async def broadcast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-
-    msg = update.message.text.replace("/broadcast", "").strip()
-    if not msg:
-        await update.message.reply_text("❌ Usage: /broadcast Your Message Here")
+    
+    if not context.args:
+        await update.message.reply_text("❌ Command Format: <code>/broadcast Message Text</code>", parse_mode="HTML")
         return
-
+    
+    msg_to_send = " ".join(context.args)
     users = get_users()
-    success, failed = 0, 0
-    await update.message.reply_text("📢 Starting Broadcast...")
-
-    for u_id in users:
+    sent_count = 0
+    failed_count = 0
+    
+    status_msg = await update.message.reply_text("🚀 Broadcast starting...")
+    
+    for uid in users:
         try:
-            await context.bot.send_message(chat_id=int(u_id), text=msg)
-            success += 1
+            await context.bot.send_message(chat_id=int(uid), text=msg_to_send)
+            sent_count += 1
+            await asyncio.sleep(0.05)
         except Exception:
-            failed += 1
+            failed_count += 1
+            
+    await status_msg.edit_text(
+        f"✅ <b>Broadcast Completed!</b>\n\n"
+        f"<b>Success:</b> {sent_count}\n"
+        f"<b>Failed:</b> {failed_count}",
+        parse_mode="HTML"
+    )
 
-    await update.message.reply_text(f"Broadcast Complete!\nSuccess: {success}\nFailed: {failed}")
-
-# --- DOWNLOAD HANDLER ---
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    add_user(user_id)
-
+# Media Downloader Handler
+async def process_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
+    
     if not (url.startswith("http://") or url.startswith("https://")):
+        await update.message.reply_text("❌ Kripya valid HTTP/HTTPS video URL bhejein.")
         return
 
-    # Step 1: Processing Status
-    status_msg = await update.message.reply_text("𝐏ʀᴏsᴇssɪɴɢ...⚡️")
-
+    status_msg = await update.message.reply_text("Processing link... 📥")
     loop = asyncio.get_running_loop()
-    download_dir = "downloads"
-    os.makedirs(download_dir, exist_ok=True)
+    last_update_time = [0]
 
-    # Resolution Control: Shorts <= 1080p, YouTube Long <= 360p, Others = Best MP4
-    if "youtube.com/shorts/" in url or ("youtu.be/" in url and "shorts" in url):
-        fmt = "b[ext=mp4][height<=1080]/best[ext=mp4][height<=1080]/best"
-    elif "youtube.com" in url or "youtu.be" in url:
-        fmt = "b[ext=mp4][height<=360]/best[ext=mp4][height<=360]/best"
-    else:
-        fmt = "b[ext=mp4]/best[ext=mp4]/best"
+    # Progress Callback Function for yt-dlp
+    def yt_progress_hook(d):
+        if d['status'] == 'downloading':
+            total = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+            downloaded = d.get('downloaded_bytes', 0)
+            if total > 0:
+                percent = (downloaded / total) * 100
+                import time
+                current_time = time.time()
+                if current_time - last_update_time[0] > 2.0:
+                    last_update_time[0] = current_time
+                    bar = make_progress_bar(percent)
+                    text = f"Downloading... 📥\n{bar}"
+                    asyncio.run_coroutine_threadsafe(
+                        status_msg.edit_text(text), loop
+                    )
 
+    output_filename = f"video_{update.effective_user.id}.mp4"
+
+    # YouTube 403 & Download Fix Options
     ydl_opts = {
-        'format': fmt,
-        'outtmpl': os.path.join(download_dir, '%(title)s.%(ext)s'),
+        'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4][height<=720]/best',
+        'outtmpl': output_filename,
         'quiet': True,
         'no_warnings': True,
-        'progress_hooks': [make_progress_hook(loop, context.bot, status_msg.chat_id, status_msg.message_id)],
+        'progress_hooks': [yt_progress_hook],
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+            }
+        },
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+        }
     }
 
     try:
         def download():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                return ydl.prepare_filename(info)
+                ydl.download([url])
 
-        file_path = await loop.run_in_executor(None, download)
+        await loop.run_in_executor(None, download)
+        await status_msg.edit_text("Uploading... 📤\n■■■■■■■■■■ 100%")
 
-        # Step 2: Uploading Status
-        await status_msg.edit_text("Status Upload : 📥\n𝐏ʟᴇᴀsᴇ ᴡᴀɪᴛ ᴜᴘʟᴏᴀᴅɪɴɢ...⚡️")
-
-        with open(file_path, 'rb') as video_file:
-            await update.message.reply_video(video=video_file)
-
+        with open(output_filename, 'rb') as video_file:
+            await update.message.reply_video(
+                video=video_file,
+                caption="✅ Video uploaded successfully!"
+            )
         await status_msg.delete()
-        if os.path.exists(file_path):
-            os.remove(file_path)
 
     except Exception as e:
-        logging.error(f"Error: {e}")
-        await status_msg.edit_text("Process fail ho gaya! Link check karein ya thodi der baad try karein.")
+        logging.error(f"Error processing URL: {e}")
+        await status_msg.edit_text(f"❌ Download Failed!\nError: {str(e)[:100]}")
+    
+    finally:
+        if os.path.exists(output_filename):
+            try:
+                os.remove(output_filename)
+            except Exception:
+                pass
 
-# --- MAIN RUNNER ---
-if __name__ == '__main__':
+# Main Runner
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("status", status))
-    app.add_handler(CommandHandler("broadcast", broadcast))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("status", status_command))
+    app.add_handler(CommandHandler("broadcast", broadcast_command))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_media))
 
     print("Bot is running...")
     app.run_polling()
-        
+
+if __name__ == "__main__":
+    main()
+
